@@ -472,10 +472,14 @@ oss_get_pid (void)
 int
 oss_get_uid (void)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,12,0)
+  return __kuid_val(current->cred->uid);
+#else
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,29)
   return current->cred->uid;
 #else
   return current->uid;
+#endif
 #endif
 }
 
