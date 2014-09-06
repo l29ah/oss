@@ -19,6 +19,7 @@
 #include <linux/errno.h>
 #include <linux/kernel.h>
 #include <linux/pci.h>
+#include <linux/pm.h>
 #include "timestamp.h"
 #include "oss_exports.h"
 #include "wrap.h"
@@ -38,6 +39,8 @@ MODULE_AUTHOR ("4Front Technologies (support@opensound.com)");
 
 extern int DRIVER_ATTACH (oss_device_t * osdev);
 extern int DRIVER_DETACH (oss_device_t * osdev);
+extern int DRIVER_SUSPEND (oss_device_t * osdev);
+extern int DRIVER_RESUME (oss_device_t * osdev);
 
 #if DRIVER_TYPE==DRV_PCI
 #define DRIVER_TYPE_OK
@@ -49,7 +52,10 @@ static struct pci_driver osspci_driver = {
   .name = DRIVER_NICK,
   .id_table = id_table,
   .probe = osspci_probe,
-  .remove = osspci_remove
+  .remove = osspci_remove,
+  .driver = {
+    .pm = &osspci_pm,
+  },
 };
 
 static int __init

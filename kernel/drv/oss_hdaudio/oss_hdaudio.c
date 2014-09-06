@@ -1978,3 +1978,31 @@ oss_hdaudio_detach (oss_device_t * osdev)
   oss_unregister_device (devc->osdev);
   return 1;
 }
+
+int oss_hdaudio_suspend(oss_device_t *osdev)
+{
+	hda_devc_t *devc = (hda_devc_t *) osdev->devc;
+
+	/* TODO power down the widgets */
+
+	PCI_WRITEL (devc->osdev, devc->azbar + HDA_INTSTS, 0xc0000000);	/* ack pending ints */
+
+	PCI_WRITEL (devc->osdev, devc->azbar + HDA_INTCTL, 0);	/* Intr disable */
+	PCI_WRITEL (devc->osdev, devc->azbar + HDA_STATESTS, 0x7);	/* Intr disable */
+	PCI_WRITEL (devc->osdev, devc->azbar + HDA_RIRBSTS, 0x5);	/* Intr disable */
+	PCI_WRITEB (devc->osdev, devc->azbar + HDA_RIRBCTL, 0);	/* Stop */
+	PCI_WRITEB (devc->osdev, devc->azbar + HDA_CORBCTL, 0);	/* Stop */
+
+	/* halt pci*/
+	return 0;
+}
+
+int oss_hdaudio_resume(oss_device_t *osdev)
+{
+	/* get up pci */
+
+
+	/* power up the widgets */
+
+	return init_HDA(osdev->devc);
+}

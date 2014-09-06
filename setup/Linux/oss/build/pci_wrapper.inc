@@ -69,6 +69,18 @@ osspci_probe (struct pci_dev *pcidev, const struct pci_device_id *pciid)
   return 0;
 }
 
+static oss_device_t *from_pci_dev(struct pci_dev *pcidev)
+{
+	int i;
+
+	for (i = 0; i < n_devmap; ++i) {
+		if (dev_map[i].pcidev == pcidev) {
+			return dev_map[i].osdev;
+		}
+	}
+	return 0;
+}
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0)
  static int __devexit
 #else
@@ -76,22 +88,18 @@ osspci_probe (struct pci_dev *pcidev, const struct pci_device_id *pciid)
 #endif
 osspci_remove (struct pci_dev *pcidev)
 {
-  int i;
-  oss_device_t *osdev;
+	int i;
+	oss_device_t *osdev = from_pci_dev(pcidev);
 
-  for (i = 0; i < n_devmap; i++)
-    if (dev_map[i].pcidev == pcidev)
-      {
-	osdev = dev_map[i].osdev;
-	if (!DRIVER_DETACH (osdev))
-	  printk (KERN_ALERT DRIVER_NICK ": Unloading busy device\n");
-	pci_disable_device (dev_map[i].pcidev);
-	osdev_delete (osdev);
-
+	if (osdev) {
+		if (!DRIVER_DETACH (osdev))
+			printk(KERN_ALERT DRIVER_NICK ": Unloading busy device\n");
+		pci_disable_device(pcidev);
+		osdev_delete(osdev);
+	} else {
+		printk(KERN_ALERT DRIVER_NICK ": Can't find the PCI device to detach\n");
+	}
 	return 0;
-      }
-
-  printk (KERN_ALERT DRIVER_NICK ": Can't find the PCI device to detach\n");
 }
 
 void
@@ -99,3 +107,36 @@ oss_pcie_init (oss_device_t * osdev, int flags)
 {
 	/* TODO: Do we need to do something here? */
 }
+
+static int osspci_suspend(struct device *dev)
+{
+  struct pci_dev *pci = to_pci_dev(dev);
+  return DRIVER_SUSPEND(from_pci_dev(pci));
+
+/*
+  pci_disable_device(pci);
+  pci_save_state(pci);
+  pci_set_power_state(pci, PCI_D3hot);
+
+  return 0;
+  */
+}
+
+static int osspci_resume(struct device *dev)
+{
+  struct pci_dev *pci = to_pci_dev(dev);
+  return DRIVER_RESUME(from_pci_dev(pci));
+
+/*
+  pci_set_power_state(pci, PCI_D0);
+  pci_restore_state(pci);
+  if (pci_enable_device(pci) < 0) {
+    printk(KERN_ERR "pci_enable_device failed\n");
+    return -EIO;
+  }
+
+  return 0;
+  */
+}
+
+SIMPLE_DEV_PM_OPS(osspci_pm, osspci_suspend, osspci_resume);
